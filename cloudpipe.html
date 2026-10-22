@@ -10,6 +10,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="纯前端（原生 JavaScript + SVG）程序化积雨云天空盒生成器，支持实时调参、拖拽全景与透明 PNG 导出。">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%98%81%EF%B8%8F%3C/text%3E%3C/svg%3E">
   <title>程序化积雨云 - 终极天空盒</title>
   <style>
     :root {
@@ -41,10 +44,15 @@
       position: relative;
       overflow: hidden;
       cursor: grab;
+      touch-action: none;
       background: linear-gradient(to bottom, #1E3A8A 0%, #FDFBF7 100%);
     }
     #canvas-container:active {
       cursor: grabbing;
+    }
+    #canvas-container:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: -2px;
     }
     svg {
       width: 100%;
@@ -123,6 +131,7 @@
     }
     input[type="range"] {
       -webkit-appearance: none;
+      appearance: none;
       width: 100%;
       height: 4px;
       background: #334155;
@@ -141,6 +150,24 @@
     }
     input[type="range"]::-webkit-slider-thumb:hover {
       transform: scale(1.2);
+    }
+    input[type="range"]::-moz-range-track {
+      height: 4px;
+      background: #334155;
+      border-radius: 2px;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border: none;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+    input[type="range"]:focus-visible,
+    button:focus-visible {
+      outline: 2px solid #93c5fd;
+      outline-offset: 2px;
     }
     
     .btn-group {
@@ -190,15 +217,38 @@
       pointer-events: none;
       z-index: 20;
     }
+
+    @media (max-width: 820px) {
+      #app {
+        flex-direction: column;
+      }
+      #canvas-container {
+        flex: 1 1 auto;
+        min-height: 50vh;
+      }
+      #controls {
+        width: 100%;
+        max-height: 45vh;
+        border-left: none;
+        border-top: 1px solid var(--border);
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+      }
+      .btn-group {
+        flex-direction: row;
+      }
+      .btn-group button {
+        flex: 1;
+      }
+    }
   </style>
 </head>
 <body>
 
 <div id="app">
-  <div id="canvas-container">
-    <div class="loading" id="loading">☁️ 正在生成天空盒...</div>
+  <div id="canvas-container" tabindex="0" aria-label="云层预览，可拖拽或使用左右方向键平移">
+    <div class="loading" id="loading" role="status" aria-live="polite">☁️ 正在生成天空盒...</div>
     
-    <svg id="skybox" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3000 1000" preserveAspectRatio="xMidYMid slice" style="opacity: 0; transition: opacity 0.5s;">
+    <svg id="skybox" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3000 1000" preserveAspectRatio="xMidYMid slice" role="img" aria-label="程序化生成的积雨云天空" style="opacity: 0; transition: opacity 0.5s;">
       <defs>
         <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stop-color="#1E3A8A" /> 
@@ -255,15 +305,15 @@
       <div class="panel-content">
         <div class="control-group">
           <div class="control-header">整体缩放 <span id="val-overallScale">1.0</span></div>
-          <input type="range" id="param-overallScale" min="0.1" max="2.5" step="0.05" value="1.0">
+          <input type="range" id="param-overallScale" aria-label="整体缩放" min="0.1" max="2.5" step="0.05" value="1.0">
         </div>
         <div class="control-group">
           <div class="control-header">云团数量 (组) <span id="val-cloudCount">10</span></div>
-          <input type="range" id="param-cloudCount" min="1" max="20" step="1" value="10">
+          <input type="range" id="param-cloudCount" aria-label="云团数量" min="1" max="20" step="1" value="10">
         </div>
         <div class="control-group">
           <div class="control-header">全局底到顶高度 <span id="val-height">0.7</span></div>
-          <input type="range" id="param-height" min="0.3" max="2.0" step="0.05" value="0.7">
+          <input type="range" id="param-height" aria-label="全局底到顶高度" min="0.3" max="2.0" step="0.05" value="0.7">
         </div>
       </div>
     </details>
@@ -273,19 +323,19 @@
       <div class="panel-content">
         <div class="control-group">
           <div class="control-header">底部宽度 <span id="val-baseW">1.0</span></div>
-          <input type="range" id="param-baseW" min="0.5" max="1.5" step="0.05" value="1.0">
+          <input type="range" id="param-baseW" aria-label="底部宽度" min="0.5" max="1.5" step="0.05" value="1.0">
         </div>
         <div class="control-group">
           <div class="control-header">腰部收束 <span id="val-waist">1.0</span></div>
-          <input type="range" id="param-waist" min="0.5" max="1.5" step="0.05" value="1.0">
+          <input type="range" id="param-waist" aria-label="腰部收束" min="0.5" max="1.5" step="0.05" value="1.0">
         </div>
         <div class="control-group">
           <div class="control-header">顶部蓬松度 <span id="val-topSpread">1.0</span></div>
-          <input type="range" id="param-topSpread" min="0.5" max="1.5" step="0.05" value="1.0">
+          <input type="range" id="param-topSpread" aria-label="顶部蓬松度" min="0.5" max="1.5" step="0.05" value="1.0">
         </div>
         <div class="control-group">
           <div class="control-header">边缘扰动 (离散度) <span id="val-noise">1.0</span></div>
-          <input type="range" id="param-noise" min="0" max="2.0" step="0.1" value="1.0">
+          <input type="range" id="param-noise" aria-label="边缘扰动" min="0" max="2.0" step="0.1" value="1.0">
         </div>
       </div>
     </details>
@@ -295,19 +345,19 @@
       <div class="panel-content">
         <div class="control-group">
           <div class="control-header">圆点大小 <span id="val-dotSize">1.0</span></div>
-          <input type="range" id="param-dotSize" min="0.3" max="2.0" step="0.05" value="1.0">
+          <input type="range" id="param-dotSize" aria-label="圆点大小" min="0.3" max="2.0" step="0.05" value="1.0">
         </div>
         <div class="control-group">
           <div class="control-header">大小离散度 <span id="val-sizeDispersion">1.0</span></div>
-          <input type="range" id="param-sizeDispersion" min="0" max="2.5" step="0.1" value="1.0">
+          <input type="range" id="param-sizeDispersion" aria-label="大小离散度" min="0" max="2.5" step="0.1" value="1.0">
         </div>
         <div class="control-group">
           <div class="control-header">渐变强度 (边缘虚化) <span id="val-gradIntensity">1.0</span></div>
-          <input type="range" id="param-gradIntensity" min="0.3" max="2.0" step="0.1" value="1.0">
+          <input type="range" id="param-gradIntensity" aria-label="渐变强度" min="0.3" max="2.0" step="0.1" value="1.0">
         </div>
         <div class="control-group">
           <div class="control-header">高光层亮度 <span id="val-highlightBright">1.0</span></div>
-          <input type="range" id="param-highlightBright" min="0.2" max="1.5" step="0.1" value="1.0">
+          <input type="range" id="param-highlightBright" aria-label="高光层亮度" min="0.2" max="1.5" step="0.1" value="1.0">
         </div>
       </div>
     </details>
@@ -317,11 +367,11 @@
       <div class="panel-content">
         <div class="control-group">
           <div class="control-header">全局密度 (性能) <span id="val-density">1.0</span></div>
-          <input type="range" id="param-density" min="0.3" max="1.5" step="0.1" value="1.0">
+          <input type="range" id="param-density" aria-label="全局密度" min="0.3" max="1.5" step="0.1" value="1.0">
         </div>
         <div class="control-group">
           <div class="control-header">形态随机度 <span id="val-seed">0</span></div>
-          <input type="range" id="param-seed" min="0" max="100" step="1" value="0">
+          <input type="range" id="param-seed" aria-label="形态随机种子" min="0" max="9999" step="1" value="0">
         </div>
       </div>
     </details>
@@ -365,8 +415,10 @@
   };
 
   function rand(n) {
-    var x = Math.sin(n * 12.9898 + state.seed * 78.233) * 43758.5453;
-    return x - Math.floor(x);
+    var x = Math.imul(n | 0, 374761393) + Math.imul(state.seed | 0, 668265263);
+    x = Math.imul(x ^ (x >>> 13), 1274126177);
+    x = x ^ (x >>> 16);
+    return (x >>> 0) / 4294967296;
   }
 
   var baseClusters = [
@@ -491,13 +543,20 @@
     gradHighlight[2].setAttribute("stop-opacity", (0.4 * state.highlightBright).toFixed(2));
 
     updatePanLimit();
+    applyPan();
   }
+
+  var isFirstRender = true;
+  var renderTimer = null;
 
   function render() {
     loadingText.style.display = "block";
-    svgEl.style.opacity = "0";
-    
-    setTimeout(function() {
+    if (isFirstRender) {
+      svgEl.style.opacity = "0";
+    }
+
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(function() {
       while (scene.firstChild) {
         scene.removeChild(scene.firstChild);
       }
@@ -567,12 +626,12 @@
 
       loadingText.style.display = "none";
       svgEl.style.opacity = "1";
+      isFirstRender = false;
       
-      currentPanX = 0;
-      panGroup.setAttribute("transform", `translate(0, 0)`);
       updateVisuals();
+      applyPan();
       
-    }, 50);
+    }, isFirstRender ? 50 : 16);
   }
 
   let renderTimeout;
@@ -582,6 +641,7 @@
   }
 
   var isDragging = false;
+  var pointerId = null;
   var startMouseX = 0;
   var currentPanX = 0;
   var panLimit = 1000;
@@ -590,46 +650,61 @@
     panLimit = 1000 * state.overallScale;
   }
 
-  container.addEventListener('mousedown', function(e) {
+  function applyPan() {
+    if (currentPanX > panLimit) currentPanX = panLimit;
+    if (currentPanX < -panLimit) currentPanX = -panLimit;
+    panGroup.setAttribute("transform", `translate(${currentPanX.toFixed(1)}, 0)`);
+  }
+
+  function panBy(dx) {
+    var scaleFactor = 3000 / Math.max(container.clientWidth, 100);
+    currentPanX += dx * scaleFactor;
+    applyPan();
+  }
+
+  container.addEventListener('pointerdown', function(e) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
     isDragging = true;
     startMouseX = e.clientX;
+    pointerId = e.pointerId;
+    if (container.setPointerCapture) {
+      try {
+        container.setPointerCapture(pointerId);
+      } catch (err) {}
+    }
   });
 
-  container.addEventListener('touchstart', function(e) {
-    isDragging = true;
-    startMouseX = e.touches[0].clientX;
-  }, { passive: true });
-
-  window.addEventListener('mousemove', function(e) {
+  container.addEventListener('pointermove', function(e) {
     if (!isDragging) return;
     var dx = e.clientX - startMouseX;
     startMouseX = e.clientX;
-    
-    var scaleFactor = 3000 / Math.max(container.clientWidth, 100);
-    currentPanX += dx * scaleFactor;
-    
-    if (currentPanX > panLimit) currentPanX = panLimit;
-    if (currentPanX < -panLimit) currentPanX = -panLimit;
-    
-    panGroup.setAttribute("transform", `translate(${currentPanX.toFixed(1)}, 0)`);
+    panBy(dx);
   });
 
-  window.addEventListener('touchmove', function(e) {
+  function endDrag() {
     if (!isDragging) return;
-    var dx = e.touches[0].clientX - startMouseX;
-    startMouseX = e.touches[0].clientX;
-    
-    var scaleFactor = 3000 / Math.max(container.clientWidth, 100);
-    currentPanX += dx * scaleFactor;
-    
-    if (currentPanX > panLimit) currentPanX = panLimit;
-    if (currentPanX < -panLimit) currentPanX = -panLimit;
-    
-    panGroup.setAttribute("transform", `translate(${currentPanX.toFixed(1)}, 0)`);
-  }, { passive: true });
+    isDragging = false;
+    if (pointerId !== null && container.releasePointerCapture) {
+      try {
+        container.releasePointerCapture(pointerId);
+      } catch (err) {}
+    }
+    pointerId = null;
+  }
 
-  window.addEventListener('mouseup', function() { isDragging = false; });
-  window.addEventListener('touchend', function() { isDragging = false; });
+  container.addEventListener('pointerup', endDrag);
+  container.addEventListener('pointercancel', endDrag);
+  container.addEventListener('lostpointercapture', endDrag);
+
+  container.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowLeft') {
+      panBy(-40);
+      e.preventDefault();
+    } else if (e.key === 'ArrowRight') {
+      panBy(40);
+      e.preventDefault();
+    }
+  });
 
   function bindUI() {
     var inputs = [
@@ -666,35 +741,64 @@
     });
 
     document.getElementById('btn-randomize').addEventListener('click', function() {
-      state.seed = Math.random() * 100000;
-      document.getElementById('param-seed').value = 0; 
+      var seed = Math.floor(Math.random() * 10000);
+      state.seed = seed;
+      document.getElementById('param-seed').value = seed;
+      document.getElementById('val-seed').textContent = seed;
       render();
     });
   }
 
   // ================= 导出透明云 PNG =================
   document.getElementById('btn-export').addEventListener('click', function() {
-    var originalBtnText = this.innerHTML;
-    this.innerHTML = "⏳ 正在渲染 PNG...";
-    this.disabled = true;
+    var btn = this;
+    var originalBtnText = btn.innerHTML;
 
-    // 使用 setTimeout 让 UI 有机会渲染 Loading 状态
+    function restoreButton() {
+      btn.innerHTML = originalBtnText;
+      btn.disabled = false;
+    }
+
+    btn.innerHTML = "⏳ 正在渲染 PNG...";
+    btn.disabled = true;
+
     setTimeout(function() {
       try {
-        // 1. 克隆整个 SVG
         var clone = svgEl.cloneNode(true);
-        
-        // 2. 移除背景 rect
+        clone.removeAttribute('style');
+
         var bgRect = clone.querySelector('#sky-bg-rect');
-        if (bgRect) {
+        if (bgRect && bgRect.parentNode) {
           bgRect.parentNode.removeChild(bgRect);
         }
 
-        // 3. 把 SVG 序列化为字符串，添加命名空间
+        var rect = container.getBoundingClientRect();
+        var viewWidth = Math.max(rect.width, 1);
+        var viewHeight = Math.max(rect.height, 1);
+        var viewScale = Math.max(viewWidth / 3000, viewHeight / 1000);
+        var cropWidth = Math.min(3000, viewWidth / viewScale);
+        var cropHeight = Math.min(1000, viewHeight / viewScale);
+        var cropX = 1500 - cropWidth / 2;
+        var cropY = 500 - cropHeight / 2;
+
+        var longestSide = 3200;
+        var exportWidth, exportHeight;
+        if (cropWidth >= cropHeight) {
+          exportWidth = longestSide;
+          exportHeight = Math.round(longestSide * cropHeight / cropWidth);
+        } else {
+          exportHeight = longestSide;
+          exportWidth = Math.round(longestSide * cropWidth / cropHeight);
+        }
+
+        clone.setAttribute('viewBox', cropX + ' ' + cropY + ' ' + cropWidth + ' ' + cropHeight);
+        clone.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        clone.setAttribute('width', exportWidth);
+        clone.setAttribute('height', exportHeight);
+
         var serializer = new XMLSerializer();
         var svgString = serializer.serializeToString(clone);
-        
-        // 确保包含 xmlns
+
         if (!svgString.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)) {
           svgString = svgString.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
         }
@@ -702,60 +806,46 @@
           svgString = svgString.replace(/^<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
         }
 
-        // 4. 构建 Data URL
         var svgData = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
-
-        // 5. 将 SVG 绘制到 Canvas
         var img = new Image();
-        // 根据 viewBox 尺寸设置高清画布
-        var exportWidth = 3000;
-        var exportHeight = 1000;
-        
+
         img.onload = function() {
           var canvas = document.createElement('canvas');
           canvas.width = exportWidth;
           canvas.height = exportHeight;
           var ctx = canvas.getContext('2d');
-          
-          // 绘制时保持透明
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.clearRect(0, 0, exportWidth, exportHeight);
           ctx.drawImage(img, 0, 0, exportWidth, exportHeight);
 
-          // 6. 转换为 Blob 并下载
           canvas.toBlob(function(blob) {
+            if (!blob) {
+              alert("导出失败：浏览器无法生成 PNG。");
+              restoreButton();
+              return;
+            }
             var url = URL.createObjectURL(blob);
             var a = document.createElement('a');
             a.href = url;
-            // 文件名包含随机种子，方便追溯
-            a.download = 'happy_little_clouds_' + Math.floor(state.seed) + '.png';
+            a.download = 'happy_little_clouds_' + state.seed + '_' + exportWidth + 'x' + exportHeight + '.png';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            // 恢复按钮状态
-            var btn = document.getElementById('btn-export');
-            btn.innerHTML = originalBtnText;
-            btn.disabled = false;
+            setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+            restoreButton();
           }, 'image/png');
         };
 
         img.onerror = function(err) {
           console.error("SVG 转 Image 失败", err);
           alert("导出失败，可能是由于某些浏览器限制。请尝试更换浏览器。");
-          var btn = document.getElementById('btn-export');
-          btn.innerHTML = originalBtnText;
-          btn.disabled = false;
+          restoreButton();
         };
 
         img.src = svgData;
-        
       } catch (err) {
         console.error("导出错误:", err);
         alert("导出过程发生错误");
-        var btn = document.getElementById('btn-export');
-        btn.innerHTML = originalBtnText;
-        btn.disabled = false;
+        restoreButton();
       }
     }, 100);
   });

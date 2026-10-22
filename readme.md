@@ -1,64 +1,69 @@
-程序化积雨云生成器 (Procedural Cumulonimbus Generator)
-这是一个完全基于纯前端（原生 JavaScript + SVG）编写的程序化积雨云天空盒生成管线。无需任何第三方框架或依赖，直接在浏览器中打开即可运行。
+# 程序化积雨云生成器 (Procedural Cumulonimbus Generator)
 
-项目从一个简单的圆点线稿开始，经过多次迭代，最终演变成了一个具备完整光影、景深透视、并且可以导出透明资产的天空盒生成器。
+这是一个完全基于纯前端（原生 JavaScript + SVG）实现的程序化积雨云天空盒生成管线。无需任何第三方框架或依赖，直接在浏览器中打开即可运行。
 
-核心特性
-纯数学驱动：云朵形态完全由伪随机函数与数学公式生成，无外部图片资源。
+项目从一个简单的圆点线稿开始，经过多次迭代，最终演变成了一个具备完整光影、景深透视，并且可以导出透明资产的天空盒生成器。
 
-全参数实时调节：右侧面板提供数十个滑块，可实时调整云层高度、宽度、收束感、渐变强度、光照亮度等。
+![预览](preview.png)
 
-真实的光影材质：基于 55 度斜射光源计算，云顶带有极淡的暖白色高光边，云底呈现深邃的背光阴影。
+## 在线演示
 
-极致的随机分布：云团的水平间距、叠放遮挡顺序、高度差均引入了离散化随机权重，打破了死板的排列感。
+<https://lan-yong-code.github.io/cloudpipe/>
 
-空间景深 (空气透视)：远处的云更小、透明度更高，近处的云更大、更清晰。
+## 核心特性
 
-自由拖拽：按住鼠标（或触摸屏）即可左右滑动，欣赏全景天空。
+- **纯数学驱动**：云朵形态完全由伪随机哈希与数学公式生成，无外部图片资源。
+- **全参数实时调节**：右侧面板提供十余个滑块，可实时调整云层高度、宽度、收束感、渐变强度、光照亮度等。
+- **真实的光影材质**：基于斜射光源计算，云顶带有极淡的暖白色高光边，云底呈现深邃的背光阴影。
+- **极致的随机分布**：云团的水平间距、叠放遮挡顺序、高度差均引入了离散化随机权重，打破死板的排列感。
+- **空间景深（空气透视）**：远处的云更小、透明度更高，近处的云更大、更清晰。
+- **自由拖拽**：按住鼠标（或触摸屏）即可左右滑动欣赏全景；键盘左右方向键同样可以平移。
+- **导出透明云**：一键剥离天空背景，把**当前视图**渲染为高清透明 PNG，方便合成到其他图片或游戏引擎中。
 
-导出透明云：一键剥离天空背景，将当前云层渲染为高清的透明 PNG 图像，方便作为素材合成到其他图片或游戏引擎中。
+## 如何使用
 
-🚀 如何使用
-双击在任何现代浏览器（Chrome, Edge, Safari, Firefox）中打开。
+1. 双击 `cloudpipe.html`，在任何现代浏览器（Chrome、Edge、Safari、Firefox）中打开。
+2. 在右侧折叠面板中调节各项参数，或点击「🎲 重新生成天空」获取全新的云朵分布。
+3. 点击「📥 导出透明云 (PNG)」保存无背景的云层素材。
 
-在右侧折叠面板中调节各项参数，或点击 “🎲 重新生成天空” 获取全新的云朵分布。
+### 参数速览
 
-点击 “📥 导出透明云 (PNG)” 保存无背景的云层素材。
+| 分组 | 参数 | 说明 |
+| --- | --- | --- |
+| 天空盒与环境 | 整体缩放 / 云团数量 / 全局高度 | 控制画面取景与云量 |
+| 云团形态 | 底部宽度 / 腰部收束 / 顶部蓬松度 / 边缘扰动 | 控制积雨云轮廓 |
+| 光影与材质 | 圆点大小 / 大小离散度 / 渐变强度 / 高光亮度 | 控制体积感与光照 |
+| 高级与性能 | 全局密度 / 形态随机种子 | 控制细节量并复现同一片天空 |
 
-🛠️ 技术栈
-HTML5 / CSS3 (原生 UI 与 折叠面板)
+导出文件命名为 `happy_little_clouds_<seed>_<width>x<height>.png`，最长边为 3200px，保留透明通道。记住种子即可复现同一构图。
 
-SVG (Scalable Vector Graphics) (核心渲染引擎，利用 Radial Gradient 实现体积光影)
+## 快捷键
 
-Vanilla JavaScript (生成算法、交互逻辑)
+| 操作 | 效果 |
+| --- | --- |
+| 鼠标 / 触摸拖拽 | 左右平移视角 |
+| `←` / `→` | 键盘平移视角 |
 
-Canvas API (用于导出 PNG 时进行光栅化)
+## 技术栈
 
-📜 开源协议 (MIT License)
-本项目采用 MIT 协议开源，你可以自由地使用、修改、分发，甚至用于商业项目。
+- **HTML5 / CSS3**：原生 UI、折叠面板与移动端响应式布局
+- **SVG**：核心渲染引擎，利用 Radial Gradient 实现体积光影
+- **Vanilla JavaScript**：生成算法、交互逻辑与 Pointer Events
+- **Canvas API**：导出 PNG 时进行光栅化
 
-text
-MIT License
+## 本地运行
 
-Copyright (c) 2024 Procedural Cumulonimbus Skybox
+无需构建，直接打开即可：
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+```bash
+# 可选：用任意静态服务器预览
+python -m http.server 8080
+```
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+## 开源协议 (MIT License)
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+本项目采用 MIT 协议开源，你可以自由地使用、修改、分发，甚至用于商业项目。完整文本见 [LICENSE](LICENSE)。
 
+---
 
-“In memory of Bob Ross. Happy little clouds. We don't make mistakes, just happy little accidents.”
+> "In memory of Bob Ross. Happy little clouds. We don't make mistakes, just happy little accidents."
