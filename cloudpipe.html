@@ -1,0 +1,769 @@
+<!-- 
+  Powered by LaN.Yong
+
+  In memory of Bob Ross.
+  Happy little clouds.
+  We don't make mistakes, just happy little accidents.
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>程序化积雨云 - 终极天空盒</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --panel-bg: rgba(30, 41, 59, 0.95);
+      --text-color: #f8fafc;
+      --accent: #60a5fa;
+      --border: rgba(255, 255, 255, 0.1);
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      user-select: none;
+    }
+    #app {
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+    }
+    #canvas-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+      cursor: grab;
+      background: linear-gradient(to bottom, #1E3A8A 0%, #FDFBF7 100%);
+    }
+    #canvas-container:active {
+      cursor: grabbing;
+    }
+    svg {
+      width: 100%;
+      height: 100%;
+      pointer-events: none; 
+    }
+    #controls {
+      width: 340px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(15px);
+      box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid var(--border);
+      z-index: 10;
+      overflow-y: auto;
+    }
+    
+    details {
+      border-bottom: 1px solid var(--border);
+      padding: 0;
+    }
+    details[open] {
+      padding-bottom: 16px;
+    }
+    summary {
+      padding: 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #e2e8f0;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.2s;
+    }
+    summary:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    summary::-webkit-details-marker {
+      display: none;
+    }
+    summary::after {
+      content: '+';
+      font-size: 18px;
+      color: #94a3b8;
+      transition: transform 0.3s;
+    }
+    details[open] summary::after {
+      content: '−';
+      transform: rotate(180deg);
+    }
+    .panel-content {
+      padding: 0 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .control-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+      color: #cbd5e1;
+    }
+    .control-header span {
+      color: var(--accent);
+      font-family: monospace;
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      background: #334155;
+      border-radius: 2px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+    
+    .btn-group {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    button {
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      border: none;
+    }
+    button:active {
+      transform: scale(0.98);
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #0f172a;
+    }
+    .btn-primary:hover {
+      background: #93c5fd;
+    }
+    .btn-secondary {
+      background: transparent;
+      color: #e2e8f0;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.1);
+    }
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 24px;
+      color: #64748b;
+      pointer-events: none;
+      z-index: 20;
+    }
+  </style>
+</head>
+<body>
+
+<div id="app">
+  <div id="canvas-container">
+    <div class="loading" id="loading">☁️ 正在生成天空盒...</div>
+    
+    <svg id="skybox" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3000 1000" preserveAspectRatio="xMidYMid slice" style="opacity: 0; transition: opacity 0.5s;">
+      <defs>
+        <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#1E3A8A" /> 
+          <stop offset="45%" stop-color="#4A72A6" /> 
+          <stop offset="100%" stop-color="#FDFBF7" /> 
+        </linearGradient>
+
+        <radialGradient id="grad-highlight-edge" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="1" />
+          <stop offset="35%" stop-color="#ffffff" stop-opacity="0.98" />
+          <stop offset="70%" stop-color="#fffdf5" stop-opacity="0.4" />
+          <stop offset="100%" stop-color="#fffef0" stop-opacity="0" />
+        </radialGradient>
+        <radialGradient id="grad-hi" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="1" />
+          <stop offset="20%" stop-color="#ffffff" stop-opacity="0.8" />
+          <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+        </radialGradient>
+        <radialGradient id="grad-mid-hi" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#e2e8f0" stop-opacity="0.95" />
+          <stop offset="25%" stop-color="#cbd5e1" stop-opacity="0.6" />
+          <stop offset="100%" stop-color="#cbd5e1" stop-opacity="0" />
+        </radialGradient>
+        <radialGradient id="grad-mid" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#94a3b8" stop-opacity="0.9" />
+          <stop offset="30%" stop-color="#64748b" stop-opacity="0.5" />
+          <stop offset="100%" stop-color="#64748b" stop-opacity="0" />
+        </radialGradient>
+        <radialGradient id="grad-mid-low" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#475569" stop-opacity="0.95" />
+          <stop offset="30%" stop-color="#334155" stop-opacity="0.6" />
+          <stop offset="100%" stop-color="#334155" stop-opacity="0" />
+        </radialGradient>
+        <radialGradient id="grad-low" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#1e293b" stop-opacity="1" />
+          <stop offset="20%" stop-color="#0f172a" stop-opacity="0.8" />
+          <stop offset="100%" stop-color="#0f172a" stop-opacity="0" />
+        </radialGradient>
+      </defs>
+      
+      <g id="panGroup">
+        <g id="scaleGroup">
+          <!-- 背景层：导出时会被剔除 -->
+          <rect id="sky-bg-rect" x="-1000" y="-1000" width="5000" height="3000" fill="url(#skyGrad)"/>
+          <g id="cloudScene"></g>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <div id="controls">
+    <details open>
+      <summary>🌍 天空盒与环境</summary>
+      <div class="panel-content">
+        <div class="control-group">
+          <div class="control-header">整体缩放 <span id="val-overallScale">1.0</span></div>
+          <input type="range" id="param-overallScale" min="0.1" max="2.5" step="0.05" value="1.0">
+        </div>
+        <div class="control-group">
+          <div class="control-header">云团数量 (组) <span id="val-cloudCount">10</span></div>
+          <input type="range" id="param-cloudCount" min="1" max="20" step="1" value="10">
+        </div>
+        <div class="control-group">
+          <div class="control-header">全局底到顶高度 <span id="val-height">0.7</span></div>
+          <input type="range" id="param-height" min="0.3" max="2.0" step="0.05" value="0.7">
+        </div>
+      </div>
+    </details>
+
+    <details open>
+      <summary>📐 云团形态</summary>
+      <div class="panel-content">
+        <div class="control-group">
+          <div class="control-header">底部宽度 <span id="val-baseW">1.0</span></div>
+          <input type="range" id="param-baseW" min="0.5" max="1.5" step="0.05" value="1.0">
+        </div>
+        <div class="control-group">
+          <div class="control-header">腰部收束 <span id="val-waist">1.0</span></div>
+          <input type="range" id="param-waist" min="0.5" max="1.5" step="0.05" value="1.0">
+        </div>
+        <div class="control-group">
+          <div class="control-header">顶部蓬松度 <span id="val-topSpread">1.0</span></div>
+          <input type="range" id="param-topSpread" min="0.5" max="1.5" step="0.05" value="1.0">
+        </div>
+        <div class="control-group">
+          <div class="control-header">边缘扰动 (离散度) <span id="val-noise">1.0</span></div>
+          <input type="range" id="param-noise" min="0" max="2.0" step="0.1" value="1.0">
+        </div>
+      </div>
+    </details>
+
+    <details open>
+      <summary>🎨 光影与材质</summary>
+      <div class="panel-content">
+        <div class="control-group">
+          <div class="control-header">圆点大小 <span id="val-dotSize">1.0</span></div>
+          <input type="range" id="param-dotSize" min="0.3" max="2.0" step="0.05" value="1.0">
+        </div>
+        <div class="control-group">
+          <div class="control-header">大小离散度 <span id="val-sizeDispersion">1.0</span></div>
+          <input type="range" id="param-sizeDispersion" min="0" max="2.5" step="0.1" value="1.0">
+        </div>
+        <div class="control-group">
+          <div class="control-header">渐变强度 (边缘虚化) <span id="val-gradIntensity">1.0</span></div>
+          <input type="range" id="param-gradIntensity" min="0.3" max="2.0" step="0.1" value="1.0">
+        </div>
+        <div class="control-group">
+          <div class="control-header">高光层亮度 <span id="val-highlightBright">1.0</span></div>
+          <input type="range" id="param-highlightBright" min="0.2" max="1.5" step="0.1" value="1.0">
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary>⚙️ 高级与性能</summary>
+      <div class="panel-content">
+        <div class="control-group">
+          <div class="control-header">全局密度 (性能) <span id="val-density">1.0</span></div>
+          <input type="range" id="param-density" min="0.3" max="1.5" step="0.1" value="1.0">
+        </div>
+        <div class="control-group">
+          <div class="control-header">形态随机度 <span id="val-seed">0</span></div>
+          <input type="range" id="param-seed" min="0" max="100" step="1" value="0">
+        </div>
+      </div>
+    </details>
+
+    <!-- 按钮组 -->
+    <div class="btn-group">
+      <button id="btn-randomize" class="btn-primary">🎲 重新生成天空</button>
+      <button id="btn-export" class="btn-secondary">📥 导出透明云 (PNG)</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// In memory of Bob Ross. Happy little clouds. We don't make mistakes, just happy little accidents.
+(function() {
+  var svgNS = "http://www.w3.org/2000/svg";
+  var scene = document.getElementById("cloudScene");
+  var svgEl = document.getElementById("skybox");
+  var loadingText = document.getElementById("loading");
+  var container = document.getElementById("canvas-container");
+  var panGroup = document.getElementById("panGroup");
+  var scaleGroup = document.getElementById("scaleGroup");
+
+  var state = {
+    overallScale: 1.0,
+    cloudCount: 10,
+    height: 0.7,
+    
+    baseW: 1.0,
+    waist: 1.0,
+    topSpread: 1.0,
+    noise: 1.0,
+    
+    dotSize: 1.0,
+    sizeDispersion: 1.0,
+    gradIntensity: 1.0,
+    highlightBright: 1.0,
+    
+    density: 1.0,
+    seed: 0
+  };
+
+  function rand(n) {
+    var x = Math.sin(n * 12.9898 + state.seed * 78.233) * 43758.5453;
+    return x - Math.floor(x);
+  }
+
+  var baseClusters = [
+    { cx: 380, cy: 160, rx: 70, ry: 65, type: 'top', p: 20 },
+    { cx: 450, cy: 180, rx: 75, ry: 70, type: 'top', p: 20 },
+    { cx: 320, cy: 200, rx: 75, ry: 70, type: 'top', p: 20 },
+    { cx: 510, cy: 220, rx: 70, ry: 65, type: 'top', p: 20 },
+    { cx: 280, cy: 250, rx: 65, ry: 60, type: 'top', p: 20 },
+    { cx: 400, cy: 280, rx: 100, ry: 85, type: 'mid', p: 25 },
+    { cx: 300, cy: 330, rx: 110, ry: 90, type: 'mid', p: 25 },
+    { cx: 500, cy: 320, rx: 115, ry: 95, type: 'mid', p: 25 },
+    { cx: 400, cy: 390, rx: 130, ry: 100, type: 'mid', p: 30 },
+    { cx: 400, cy: 520, rx: 230, ry: 140, type: 'base', p: 45 },
+    { cx: 280, cy: 500, rx: 150, ry: 110, type: 'base', p: 30 },
+    { cx: 520, cy: 500, rx: 150, ry: 110, type: 'base', p: 30 }
+  ];
+
+  function renderSingleCloud(group, cloudSeedOffset, heightScale) {
+    var pivotY = 520; 
+
+    var clusters = baseClusters.map(function(base, idx) {
+      var seedVal = idx + cloudSeedOffset;
+      
+      var scaledCy = pivotY - (pivotY - base.cy) * state.height * heightScale;
+      var scaledRy = base.ry * state.height * heightScale;
+      
+      var rxMultiplier = 1.0;
+      if (base.type === 'base') rxMultiplier = state.baseW;
+      else if (base.type === 'mid') rxMultiplier = state.waist;
+      else if (base.type === 'top') rxMultiplier = state.topSpread;
+
+      return {
+        cx: base.cx + (rand(seedVal) - 0.5) * 40 * state.noise, 
+        cy: scaledCy + (rand(seedVal + 100) - 0.5) * 40 * state.noise,
+        rx: base.rx * rxMultiplier * (0.8 + rand(seedVal + 200) * 0.4),
+        ry: scaledRy * (0.8 + rand(seedVal + 300) * 0.4),
+        type: base.type,
+        p: Math.floor(base.p * state.density)
+      };
+    });
+
+    clusters.sort(function(a, b) { return a.cy - b.cy; });
+
+    clusters.forEach(function(cluster, cIdx) {
+      var clusterGlobalLight = ((400 - cluster.cx) / 400) * 0.3 + ((400 - cluster.cy) / 400) * 0.6;
+
+      for (var i = 0; i < cluster.p; i++) {
+        var seedBase = cloudSeedOffset + cIdx * 100 + i;
+        
+        var angle = rand(seedBase) * Math.PI * 2;
+        var dist = Math.pow(rand(seedBase + 50), 0.6); 
+        
+        var nx = Math.cos(angle) * dist;
+        var ny = Math.sin(angle) * dist;
+        
+        var finalNx = nx;
+        if (cluster.type === 'top') {
+          if (ny > 0) finalNx = nx * (1 - 0.6 * ny); 
+          else finalNx = nx * (1 - 0.1 * ny); 
+        } else if (cluster.type === 'base') {
+          if (ny > 0) finalNx = nx * (1 + 0.8 * ny); 
+          else finalNx = nx * (1 + 0.4 * ny); 
+        } else {
+          finalNx = nx * (1 + 0.15 * Math.sin(ny * Math.PI));
+        }
+        
+        var x = cluster.cx + finalNx * cluster.rx;
+        var y = cluster.cy + ny * cluster.ry;
+        
+        x += (rand(seedBase + 150) - 0.5) * 40 * state.noise;
+        y += (rand(seedBase + 200) - 0.5) * 25 * state.height * heightScale;
+        
+        var rBase = cluster.rx * 0.15 + 20;
+        var rRand = rand(seedBase + 250) * 70 * state.sizeDispersion;
+        var r = (rBase + rRand) * state.dotSize;
+        
+        var localLight = (-nx * 0.4 - ny * 0.6) + (dist * 0.3);
+        var light = clusterGlobalLight + localLight + (rand(seedBase + 300) - 0.5) * 0.15;
+        
+        var fillId;
+        if (light > 0.6) {
+          fillId = "url(#grad-highlight-edge)";
+          r *= 0.65; 
+        } else if (light > 0.3) {
+          fillId = "url(#grad-hi)";
+        } else if (light > 0.0) {
+          fillId = "url(#grad-mid-hi)";
+        } else if (light > -0.3) {
+          fillId = "url(#grad-mid)";
+        } else if (light > -0.6) {
+          fillId = "url(#grad-mid-low)";
+        } else {
+          fillId = "url(#grad-low)";
+        }
+        
+        var c = document.createElementNS(svgNS, "circle");
+        c.setAttribute("cx", x.toFixed(1));
+        c.setAttribute("cy", y.toFixed(1));
+        c.setAttribute("r", r.toFixed(1));
+        c.setAttribute("fill", fillId);
+        group.appendChild(c);
+      }
+    });
+  }
+
+  function updateVisuals() {
+    var scaleT = `translate(${1500 - 1500 * state.overallScale}, ${500 - 500 * state.overallScale}) scale(${state.overallScale})`;
+    scaleGroup.setAttribute("transform", scaleT);
+    
+    var gradHi = document.getElementById("grad-hi").children;
+    gradHi[1].setAttribute("stop-opacity", (0.8 * state.gradIntensity).toFixed(2));
+    
+    var gradMidHi = document.getElementById("grad-mid-hi").children;
+    gradMidHi[1].setAttribute("stop-opacity", (0.6 * state.gradIntensity).toFixed(2));
+    
+    var gradMid = document.getElementById("grad-mid").children;
+    gradMid[1].setAttribute("stop-opacity", (0.5 * state.gradIntensity).toFixed(2));
+
+    var gradHighlight = document.getElementById("grad-highlight-edge").children;
+    gradHighlight[0].setAttribute("stop-opacity", (1.0 * state.highlightBright).toFixed(2));
+    gradHighlight[1].setAttribute("stop-opacity", (0.98 * state.highlightBright).toFixed(2));
+    gradHighlight[2].setAttribute("stop-opacity", (0.4 * state.highlightBright).toFixed(2));
+
+    updatePanLimit();
+  }
+
+  function render() {
+    loadingText.style.display = "block";
+    svgEl.style.opacity = "0";
+    
+    setTimeout(function() {
+      while (scene.firstChild) {
+        scene.removeChild(scene.firstChild);
+      }
+
+      var cloudParams = [];
+      var numGroups = state.cloudCount;
+      var cloudsPerGroup = 5;
+      
+      var weights = [];
+      var totalWeight = 0;
+      for (var w = 0; w < numGroups; w++) {
+        var val = 0.3 + rand(w + 40000) * 1.4; 
+        weights.push(val);
+        totalWeight += val;
+      }
+
+      var currentX = -200; 
+      var totalWidth = 3400; 
+
+      for (var g = 0; g < numGroups; g++) {
+        var groupWidth = (weights[g] / totalWeight) * totalWidth;
+        var groupCenterX = currentX + groupWidth / 2;
+        currentX += groupWidth;
+
+        groupCenterX += (rand(g + 50000) - 0.5) * 100;
+
+        for (var c = 0; c < cloudsPerGroup; c++) {
+          var seedBase = g * 1000 + c * 77 + 100;
+          
+          var offsetX = (rand(seedBase) - 0.5) * 350;
+          var offsetY = (rand(seedBase + 1) - 0.5) * 30; 
+          
+          var cloudScale = 0.2 + rand(seedBase + 2) * 0.7;
+          var cloudHeightScale = 0.3 + rand(seedBase + 4) * 2.0; 
+          
+          var opacity = 0.4 + cloudScale * 0.6;
+          var baseY = 550 + (1 - cloudScale) * 120 + offsetY;
+          
+          cloudParams.push({
+            x: groupCenterX + offsetX,
+            y: baseY,
+            scale: cloudScale,
+            heightScale: cloudHeightScale, 
+            opacity: opacity,
+            seedOffset: seedBase + 7777
+          });
+        }
+      }
+
+      cloudParams.sort(function(a, b) {
+        var sortA = a.scale + (rand(a.seedOffset + 888) - 0.5) * 0.8;
+        var sortB = b.scale + (rand(b.seedOffset + 888) - 0.5) * 0.8;
+        return sortA - sortB;
+      });
+
+      cloudParams.forEach(function(p) {
+        var g = document.createElementNS(svgNS, "g");
+        var tx = p.x - 400 * p.scale;
+        var ty = p.y - 520 * p.scale;
+        
+        g.setAttribute("transform", `translate(${tx}, ${ty}) scale(${p.scale})`);
+        g.setAttribute("opacity", p.opacity.toFixed(2));
+        
+        renderSingleCloud(g, p.seedOffset, p.heightScale);
+        scene.appendChild(g);
+      });
+
+      loadingText.style.display = "none";
+      svgEl.style.opacity = "1";
+      
+      currentPanX = 0;
+      panGroup.setAttribute("transform", `translate(0, 0)`);
+      updateVisuals();
+      
+    }, 50);
+  }
+
+  let renderTimeout;
+  function debouncedRender() {
+    clearTimeout(renderTimeout);
+    renderTimeout = setTimeout(render, 150);
+  }
+
+  var isDragging = false;
+  var startMouseX = 0;
+  var currentPanX = 0;
+  var panLimit = 1000;
+
+  function updatePanLimit() {
+    panLimit = 1000 * state.overallScale;
+  }
+
+  container.addEventListener('mousedown', function(e) {
+    isDragging = true;
+    startMouseX = e.clientX;
+  });
+
+  container.addEventListener('touchstart', function(e) {
+    isDragging = true;
+    startMouseX = e.touches[0].clientX;
+  }, { passive: true });
+
+  window.addEventListener('mousemove', function(e) {
+    if (!isDragging) return;
+    var dx = e.clientX - startMouseX;
+    startMouseX = e.clientX;
+    
+    var scaleFactor = 3000 / Math.max(container.clientWidth, 100);
+    currentPanX += dx * scaleFactor;
+    
+    if (currentPanX > panLimit) currentPanX = panLimit;
+    if (currentPanX < -panLimit) currentPanX = -panLimit;
+    
+    panGroup.setAttribute("transform", `translate(${currentPanX.toFixed(1)}, 0)`);
+  });
+
+  window.addEventListener('touchmove', function(e) {
+    if (!isDragging) return;
+    var dx = e.touches[0].clientX - startMouseX;
+    startMouseX = e.touches[0].clientX;
+    
+    var scaleFactor = 3000 / Math.max(container.clientWidth, 100);
+    currentPanX += dx * scaleFactor;
+    
+    if (currentPanX > panLimit) currentPanX = panLimit;
+    if (currentPanX < -panLimit) currentPanX = -panLimit;
+    
+    panGroup.setAttribute("transform", `translate(${currentPanX.toFixed(1)}, 0)`);
+  }, { passive: true });
+
+  window.addEventListener('mouseup', function() { isDragging = false; });
+  window.addEventListener('touchend', function() { isDragging = false; });
+
+  function bindUI() {
+    var inputs = [
+      { id: 'overallScale', isVisual: true },
+      { id: 'cloudCount', isVisual: false },
+      { id: 'height', isVisual: false },
+      { id: 'baseW', isVisual: false },
+      { id: 'waist', isVisual: false },
+      { id: 'topSpread', isVisual: false },
+      { id: 'noise', isVisual: false },
+      { id: 'dotSize', isVisual: false },
+      { id: 'sizeDispersion', isVisual: false },
+      { id: 'gradIntensity', isVisual: true },
+      { id: 'highlightBright', isVisual: true },
+      { id: 'density', isVisual: false },
+      { id: 'seed', isVisual: false }
+    ];
+
+    inputs.forEach(function(item) {
+      var el = document.getElementById('param-' + item.id);
+      var display = document.getElementById('val-' + item.id);
+      
+      el.addEventListener('input', function(e) {
+        var val = parseFloat(e.target.value);
+        state[item.id] = val;
+        display.textContent = (val % 1 === 0) ? val : val.toFixed(2);
+        
+        if (item.isVisual) {
+          updateVisuals();
+        } else {
+          debouncedRender();
+        }
+      });
+    });
+
+    document.getElementById('btn-randomize').addEventListener('click', function() {
+      state.seed = Math.random() * 100000;
+      document.getElementById('param-seed').value = 0; 
+      render();
+    });
+  }
+
+  // ================= 导出透明云 PNG =================
+  document.getElementById('btn-export').addEventListener('click', function() {
+    var originalBtnText = this.innerHTML;
+    this.innerHTML = "⏳ 正在渲染 PNG...";
+    this.disabled = true;
+
+    // 使用 setTimeout 让 UI 有机会渲染 Loading 状态
+    setTimeout(function() {
+      try {
+        // 1. 克隆整个 SVG
+        var clone = svgEl.cloneNode(true);
+        
+        // 2. 移除背景 rect
+        var bgRect = clone.querySelector('#sky-bg-rect');
+        if (bgRect) {
+          bgRect.parentNode.removeChild(bgRect);
+        }
+
+        // 3. 把 SVG 序列化为字符串，添加命名空间
+        var serializer = new XMLSerializer();
+        var svgString = serializer.serializeToString(clone);
+        
+        // 确保包含 xmlns
+        if (!svgString.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)) {
+          svgString = svgString.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+        }
+        if (!svgString.match(/^<svg[^>]+xmlns:xlink="http\:\/\/www\.w3\.org\/1999\/xlink"/)) {
+          svgString = svgString.replace(/^<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
+        }
+
+        // 4. 构建 Data URL
+        var svgData = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
+
+        // 5. 将 SVG 绘制到 Canvas
+        var img = new Image();
+        // 根据 viewBox 尺寸设置高清画布
+        var exportWidth = 3000;
+        var exportHeight = 1000;
+        
+        img.onload = function() {
+          var canvas = document.createElement('canvas');
+          canvas.width = exportWidth;
+          canvas.height = exportHeight;
+          var ctx = canvas.getContext('2d');
+          
+          // 绘制时保持透明
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, exportWidth, exportHeight);
+
+          // 6. 转换为 Blob 并下载
+          canvas.toBlob(function(blob) {
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            // 文件名包含随机种子，方便追溯
+            a.download = 'happy_little_clouds_' + Math.floor(state.seed) + '.png';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            // 恢复按钮状态
+            var btn = document.getElementById('btn-export');
+            btn.innerHTML = originalBtnText;
+            btn.disabled = false;
+          }, 'image/png');
+        };
+
+        img.onerror = function(err) {
+          console.error("SVG 转 Image 失败", err);
+          alert("导出失败，可能是由于某些浏览器限制。请尝试更换浏览器。");
+          var btn = document.getElementById('btn-export');
+          btn.innerHTML = originalBtnText;
+          btn.disabled = false;
+        };
+
+        img.src = svgData;
+        
+      } catch (err) {
+        console.error("导出错误:", err);
+        alert("导出过程发生错误");
+        var btn = document.getElementById('btn-export');
+        btn.innerHTML = originalBtnText;
+        btn.disabled = false;
+      }
+    }, 100);
+  });
+  // =================================================
+
+  bindUI();
+  render();
+})();
+</script>
+</body>
+</html>
